@@ -2,6 +2,7 @@
 import scipy.io as sio
 import numpy as np
 from functools import reduce
+import pickle
 
 
 def calc_window_score(watch_wind, regulate_wind):
@@ -60,7 +61,7 @@ def main():
     windows = {'watch': [Window(idx, time_slots, 'watch') for idx, time_slots in enumerate(w_times)],
                'regulate': [Window(idx, time_slots, 'regulate') for idx, time_slots in enumerate(r_times)]}
     windows_score = list(map(calc_window_score, windows['watch'], windows['regulate']))
-    print(windows_score)
+    pickle.dump(windows, open('windows.pckl', 'wb'))
 
 
 if __name__ == '__main__':
