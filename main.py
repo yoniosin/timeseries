@@ -28,9 +28,9 @@ class PairedWindows:
         self.score = calc_window_score()
         
     def calc_window_score(self):
-    mean_diff = self.watch_window.mean - self.regulate_window.mean
-    joint_var = np.var(np.concatenate((self.watch_window.all_samples, self.regulate_window.all_samples)))
-    return mean_diff / joint_var
+        mean_diff = self.watch_window.mean - self.regulate_window.mean
+        joint_var = np.var(np.concatenate((self.watch_window.all_samples, self.regulate_window.all_samples)))
+        return mean_diff / joint_var
 
 
 class Window:
