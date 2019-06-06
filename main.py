@@ -9,7 +9,7 @@ class Subject:
     def __init__(self, meta_data: SubjectMetaData):
         def gen_windows(window_type):
             times_list = meta_data.watch_times if window_type == 'watch' else meta_data.regulate_times
-            return map(lambda w: Window(*w, window_type, self.amyg_vox, self.bold), enumurate(times_list))
+            return map(lambda w: Window(*w, window_type, self.amyg_vox, self.bold), enumerate(times_list))
 
         self.meta_data = meta_data
         self.roi = np.where(sio.loadmat(meta_data.roi_mat_path)['ans'])
