@@ -6,20 +6,15 @@ import pickle
 from config import SubjectMetaData
 
 class Subject:
-    amyg_vox = None
-    bold = None
-    
     def __init__(self, meta_data: SubjectMetaData):
         def gen_windows(window_type):
             times_list = meta_data.watch_times if window_type == 'watch' else meta_data.regulate_times
-            return map(lambda w: gen_single_window(*w, window_type), times_list)
-            def gen_single_window(idx, window_times, window_type):
-                return Window(idx, list(range(window_times.on + initial_delay, window_times.on + window_times.duration)), window_type)
+            return map(lambda w: Window(*w, window_type, self.amyg_vox, self.bold), times_list)
 
         self.meta_data = meta_data
         self.roi = np.where(sio.loadmat(meta_data.roi_mat_path)['ans'])
-        Subject.amyg_vox = list(zip(*self.roi)) #  list(roi[0], roi[1], roi[2])
-        Subject.bold = sio.loadmat(meta_data.bold_mat_path)['ans']
+        self.amyg_vox = list(zip(*self.roi)) #  list(roi[0], roi[1], roi[2])
+        self.bold = sio.loadmat(meta_data.bold_mat_path)['ans']
 
         self.paired_windows = list(map(PairedWindows, gen_windows('watch'), gen_windows('regulate')))
         
@@ -37,12 +32,12 @@ class PairedWindows:
 
 
 class Window:
-    def __init__(self, idx, time_slots, window_type):
+    def __init__(self, idx, time_slots, window_type, amyg_vox, bold_mat):
         self.idx = idx
         self.time = time_slots
         self.window_type = window_type
 
-        self.voxels = {vox: Voxel(vox, Subject.bold[(*vox), time_slots]) for vox in Subject.amyg_vox}
+        self.voxels = {vox: Voxel(vox, bold_mat[(*vox), time_slots]) for vox in amyg_vox}
         self.all_samples = reduce(lambda x, y: np.concatenate((x, y)), map(lambda vox: vox.samples, self.voxels.values()))
         self.mean = np.mean(self.all_samples)
         self.var = np.var(self.all_samples)
