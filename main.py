@@ -21,8 +21,6 @@ class Subject:
         Subject.amyg_vox = list(zip(roi[0], roi[1], roi[2])) #  list(zip(*roi))
         Subject.bold = sio.loadmat(meta_data.bold_mat_path)['ans']
 
-        self.watch_times = watch_times
-        self.regulate_times = regulate_times
         self.paired_windows = list(map(PairedWindows, gen_windows('watch'), gen_windows('regulate')))
         
 
