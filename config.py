@@ -2,12 +2,9 @@ from dataclasses import dataclass
 from collections import namedtuple
 
 
-window_times = namedtuple('window_times', ['on', 'duration'])
-
-
 @dataclass
 class SubjectMetaData:
-	initial_dealy:int
+	initial_delay:int
 	watch_on: List[int]
 	watch_duration: List[int]
 	regulate_on: List[int]
@@ -15,7 +12,11 @@ class SubjectMetaData:
 	roi_mat_path: str
 	bold_mat_path: str
 	
+	def gen_time_range(on, duration): 
+		start = on + self.initial_delay
+		return list(range(start, start + duration))
+	
 	def __post_init__(self):
-		self.watch_times = map(window_times, self.watch_on, self.watch_duration)
-		self.regulate_times = map(window_times, self.regulate_on, self.regulate_duration)
+		self.watch_times = map(gen_time_range, self.watch_on, self.watch_duration)
+		self.regulate_times = map(gen_time_range, self.regulate_on, self.regulate_duration)
 	
