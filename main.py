@@ -18,7 +18,7 @@ class Subject:
 
         self.meta_data = meta_data
         self.roi = np.where(sio.loadmat(meta_data.roi_mat_path)['ans'])
-        Subject.amyg_vox = list(zip(roi[0], roi[1], roi[2])) #  list(zip(*roi))
+        Subject.amyg_vox = list(zip(*self.roi)) #  list(roi[0], roi[1], roi[2])
         Subject.bold = sio.loadmat(meta_data.bold_mat_path)['ans']
 
         self.paired_windows = list(map(PairedWindows, gen_windows('watch'), gen_windows('regulate')))
