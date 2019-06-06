@@ -3,30 +3,27 @@ import scipy.io as sio
 import numpy as np
 from functools import reduce
 import pickle
-from collections inport namedtuple
-
-window_times = namedtuple('window_times', ['on', 'duration'])
+from config import SubjectMetaData
 
 class Subject:
     amyg_vox = None
     bold = None
     
-    def __init__(self, watch_times: window_times, regulate_times: window_times, initial_delay, roi_location):
-        def gen_windows(times_list, window_type):
+    def __init__(self, meta_data: SubjectMetaData):
+        def gen_windows(window_type):
+            times_list = meta_data.watch_times if window_type == 'watch' else meta_data.regulate_times
             return map(lambda w: gen_single_window(*w, window_type), times_list)
             def gen_single_window(idx, window_times, window_type):
                 return Window(idx, list(range(window_times.on + initial_delay, window_times.on + window_times.duration)), window_type)
 
-        self.roi_location = roi_location
-        self.roi = np.where(sio.loadmat(roi_location)['ans'])
+        self.meta_data = meta_data
+        self.roi = np.where(sio.loadmat(meta_data.roi_mat_path)['ans'])
         Subject.amyg_vox = list(zip(roi[0], roi[1], roi[2])) #  list(zip(*roi))
-        Subject.bold = sio.loadmat('raw_data/BOLD.mat')['ans']
+        Subject.bold = sio.loadmat(meta_data.bold_mat_path)['ans']
 
-        
-        self.initial_delay = initial_delay
         self.watch_times = watch_times
         self.regulate_times = regulate_times
-        self.paired_windows = list(map(PairedWindows, gen_windows(watch_times, 'watch'), gen_windows(watch_times, 'regulate')))
+        self.paired_windows = list(map(PairedWindows, gen_windows('watch'), gen_windows('regulate')))
         
 
 class PairedWindows:
@@ -68,17 +65,15 @@ class Voxel:
 
 
 def main():
-    initial_delay = 2
-
-    w_on = [1, 54, 104, 154, 204]
-    w_duration = [23, 20, 20, 20, 20]
-    w_times = map(window_times, w_on, w_duration)
-
-    r_on = [24, 74, 124, 174, 224]
-    r_duration = [20, 20, 20, 20, 20]
-    r_times = map(window_times, r_on, r_duration)
-
-    subject = Subject(w_times, r_times, initial_delay, 'raw_data/roi.mat')
+    subject_meta_data = SubjectMetaData(initial_delay=2,
+                                        watch_on = [1, 54, 104, 154, 204],
+                                        watch_duration = [23, 20, 20, 20, 20],
+                                        regulate_on = [24, 74, 124, 174, 224],
+                                        regulate_duration = [20, 20, 20, 20, 20],
+                                        roi_mat_path='raw_data/roi.mat',
+                                        bold_mat_path='raw_data/BOLD.mat')
+                                        
+    subject = Subject(subject_meta_data)
     
     pickle.dump(subject, open('windows.pckl', 'wb'))
 
