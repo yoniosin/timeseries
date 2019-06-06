@@ -21,6 +21,8 @@ class Subject:
 
 class PairedWindows:
     def __init__(self, watch_window, regulate_window):
+        assert <watch_window.idx == regulate_window.idx, f'watch idx is {watch_window.idx} while regulate idx is {regulate_window.idx}'
+        self.idx = watch_window.idx
         self.watch_window:Window = watch_window
         self.regulate_window:Window = regulate_window
         self.score = calc_window_score()
