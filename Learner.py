@@ -4,6 +4,7 @@ from Subject import Subject
 from dataclasses import dataclass
 import random
 from tqdm import tqdm
+import numpy as np
 
 
 @dataclass
@@ -45,8 +46,10 @@ class DataLoaders:
 
             def get_window_score(idx): return float(subject.paired_windows[idx].score > 0)
 
-            X = torch.tensor([get_windows_avg_diff(idx) for idx in indices]).float()
-            y = torch.tensor([get_window_score(idx) for idx in indices]).float()
+            X = np.array([get_windows_avg_diff(idx) for idx in indices])
+            X = torch.tensor(X)
+            y = np.array([get_window_score(idx) for idx in indices])
+            y = torch.tensor(y)
 
             return DataLoader(TensorDataset(X, y), shuffle=False)
 

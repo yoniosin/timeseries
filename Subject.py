@@ -3,6 +3,7 @@ import numpy as np
 import pickle
 from config import SubjectMetaData
 import pandas as pd
+import matplotlib.pyplot as plt
 
 
 class Subject:
@@ -21,9 +22,17 @@ class Subject:
         self.min_w = min((pw.min_w for pw in self.paired_windows))
         for pw in self.paired_windows:
             pw.min_w = self.min_w
+        
+        self.avg_mean_diff = pd.DataFrame({pw.idx: pw.avg_diff() for pw in self.paired_windows})
 
     def __repr__(self):
         return f'Subject'
+    
+    def visualize(self):
+        plt.figure()
+        self.avg_mean_diff.plot()
+        plt.show()
+
 
 
 class PairedWindows:
@@ -86,7 +95,7 @@ def create_subject():
                                         watch_duration=[23, 20, 20, 20, 20],
                                         regulate_on=[121, 171, 221, 271, 321],
                                         regulate_duration=[20, 20, 20, 20, 20],
-                                        bold_mat_path='raw_data/BOLD.mat')
+                                        bold_mat_path='raw_data/BOLD_test.mat')
 
     subject = Subject(subject_meta_data)
 
