@@ -86,7 +86,7 @@ def create_subject():
                                         watch_duration=[23, 20, 20, 20, 20],
                                         regulate_on=[121, 171, 221, 271, 321],
                                         regulate_duration=[20, 20, 20, 20, 20],
-                                        bold_mat_path='raw_data/BOLD_test.mat')
+                                        bold_mat_path='raw_data/BOLD.mat')
 
     subject = Subject(subject_meta_data)
 
