@@ -26,7 +26,9 @@ class Subject:
         self.avg_mean_diff = pd.DataFrame({pw.idx: pw.avg_diff() for pw in self.paired_windows})
 
     def __repr__(self):
-        return f'Subject'
+        grades = [pw.score for pw in self.paired_windows]
+        grades_formated = ("{:.2f}, " * len(grades)).format(*grades)
+        return f'Subject windows grades=[{grades_formated}]'
     
     def visualize(self):
         plt.figure()
@@ -109,5 +111,5 @@ def load_subject():
 
 
 if __name__ == '__main__':
-    t = load_subject()
+    t = create_subject()
     print('subject created')
