@@ -4,13 +4,14 @@ from Subject import Subject
 from dataclasses import dataclass
 import random
 from tqdm import tqdm
-import numpy as np
+from typing import Set
 
 
 @dataclass
 class LearnerMetaData:
+    total_subjects: int
     train_ratio: float = 0.7
-    total_windows: int = 5
+    train_windows: int = 2
 
 
 class SimpleLearner:
@@ -36,22 +37,18 @@ class SimpleLearner:
 
 
 class DataLoaders:
-    def __init__(self, subject: Subject, md: LearnerMetaData):
-        all_windows = set(range(md.total_windows))
-        train_windows_idx = set(random.sample(all_windows, int(md.train_ratio * md.total_windows)))
-        test_windows_idx = all_windows.difference(train_windows_idx)
+    def __init__(self, subjects: Set[Subject], md: LearnerMetaData):
+        train_windows = set(random.sample(subjects, int(md.train_ratio * md.total_subjects)))
+        test_windows = subjects.difference(train_windows)
 
-        def build_data_loader(indices):
-            def get_windows_avg_diff(idx): return subject.paired_windows[idx].avg_diff()
+        def build_data_loader(subjects_sub: Set[Subject]):
+            data = [s.get_data(md.train_windows) for s in subjects_sub]
+            X, y = list(zip(*data))
 
-            def get_window_score(idx): return float(subject.paired_windows[idx].score > 0)
-
-            X = np.array([get_windows_avg_diff(idx) for idx in indices])
-            X = torch.tensor(X)
-            y = np.array([get_window_score(idx) for idx in indices])
-            y = torch.tensor(y)
+            X = torch.tensor(X).double()
+            y = torch.tensor(y).double()
 
             return DataLoader(TensorDataset(X, y), shuffle=False)
 
-        self.train_dl = build_data_loader(train_windows_idx)
-        self.test_dl = build_data_loader(test_windows_idx)
+        self.train_dl = build_data_loader(train_windows)
+        self.test_dl = build_data_loader(test_windows)

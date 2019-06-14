@@ -4,6 +4,8 @@ import pickle
 from config import SubjectMetaData
 import pandas as pd
 import matplotlib.pyplot as plt
+from functools import reduce
+from itertools import chain
 
 
 class Subject:
@@ -35,6 +37,16 @@ class Subject:
         self.avg_mean_diff.plot()
         plt.show()
 
+    def get_data(self, train_num):
+        prev_data = list(chain(*[w.get_data() for w in self.get_windows(train_num)]))
+
+        last_data = self.paired_windows[train_num].watch_window.get_data(self.min_w)
+        X = np.stack(prev_data + [last_data])
+        y = self.paired_windows[train_num].score
+
+        return X, y
+
+    def get_windows(self, windows_num): return self.paired_windows[:windows_num]
 
 
 class PairedWindows:
@@ -61,6 +73,9 @@ class PairedWindows:
         watch_min = np.mean(self.watch_window.np_mat[:, :self.min_w], axis=0)
         return np.asarray(watch_min - regulate_min, dtype=float)
 
+    def get_data(self):
+        return [w.get_data(self.min_w) for w in (self.watch_window, self.regulate_window)]
+
 
 class Window:
     def __init__(self, idx, time_slots, window_type, bold_mat):
@@ -78,6 +93,8 @@ class Window:
 
     def __repr__(self):
         return f"{self.window_type} window #{self.idx}, mean={self.mean:.2f}, var={self.var:.2f}"
+
+    def get_data(self, min_w): return self.np_mat[:, :min_w]
 
 
 class Voxel:
