@@ -95,10 +95,10 @@ class LSTMFCN(nn.Module):
 
 
 class AmygNet(nn.Module):
-    def __init__(self, in_channel):
+    def __init__(self, in_channel, lstm_layers):
         super().__init__()
         self.in_conv = BlockFCNConv2D(in_channels=in_channel).double()
-        self.LstmFcn = LSTMFCN(18, 1).double()
+        self.LstmFcn = LSTMFCN(18, lstm_layers).double()
 
     def forward(self, x):
         x1 = torch.squeeze(self.in_conv(x), dim=1)

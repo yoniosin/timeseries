@@ -13,6 +13,11 @@ class LearnerMetaData:
     train_ratio: float = 0.7
     train_windows: int = 2
 
+    def __post_init__(self):
+        assert self.total_subjects > 0
+        assert 0 < self.train_ratio < 1
+        assert 0 < self.train_windows < 5
+
 
 class SimpleLearner:
     def __init__(self, data, model, loss_func):

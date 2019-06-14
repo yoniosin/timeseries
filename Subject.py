@@ -4,7 +4,6 @@ import pickle
 from config import SubjectMetaData
 import pandas as pd
 import matplotlib.pyplot as plt
-from functools import reduce
 from itertools import chain
 
 
