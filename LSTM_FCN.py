@@ -10,7 +10,7 @@ class BlockLSTM(nn.Module):
 
     def forward(self, x):
         # input is of the form (batch_size, num_variables, time_steps), e.g. (128, 1, 512)
-        x = torch.transpose(x, 0, 1)
+        # x = torch.transpose(x, 2, 0)
         # lstm layer is of the form (num_variables, batch_size, time_steps)
         x, _ = self.lstm(x)
         # dropout layer input shape:
@@ -37,15 +37,15 @@ class BlockFCNConv(nn.Module):
 
 
 class BlockFCNConv2D(nn.Module):
-    def __init__(self, in_channels, out_channels=1, kernel_size=1, momentum=0.99, epsilon=0.001):
+    def __init__(self, in_channels, out_channels, kernel_size=1, momentum=0.99, epsilon=0.001):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size)
-        self.batch_norm = nn.BatchNorm1d(num_features=1, eps=epsilon, momentum=momentum)
+        self.batch_norm = nn.BatchNorm1d(num_features=8, eps=epsilon, momentum=momentum)
         self.relu = nn.ReLU()
         self.conv2 = nn.Conv1d(in_channels=248, out_channels=1, kernel_size=kernel_size)
 
     def forward(self, x):
-        x = self.conv1(x).squeeze(0)
+        x = self.conv1(x).squeeze()
         x = torch.transpose(x, 0, 1)
         x = self.batch_norm(x)
         x = self.relu(x)
@@ -76,7 +76,9 @@ class LSTMFCN(nn.Module):
         super().__init__()
         self.lstm_block = BlockLSTM(time_steps, num_variables, lstm_hs=128)
         self.fcn_block = BlockFCN(time_steps)
-        self.linear = nn.Linear(in_features=256, out_features=1)
+        self.linear1 = nn.Linear(in_features=256, out_features=1)
+        self.relu = nn.ReLU()
+        self.linear2 = nn.Linear(in_features=8, out_features=1)
 
     def forward(self, x):
         # input is (batch_size, time_steps), it has to be (batch_size, 1, time_steps)
@@ -89,21 +91,23 @@ class LSTMFCN(nn.Module):
         # concatenate blocks output
         x = torch.cat([x1, x2], 1)
         # pass through Softmax activation
-        y = self.linear(x.squeeze())
+        x = self.linear1(x.squeeze())
+        x = torch.transpose(self.relu(x), 0, 1)
+        y = self.linear2(x)
 
         return y
 
 
 class AmygNet(nn.Module):
-    def __init__(self, in_channel, lstm_layers):
+    def __init__(self, in_channels, lstm_in_channels, lstm_layers, time_steps):
         super().__init__()
-        self.in_conv = BlockFCNConv2D(in_channels=in_channel).double()
-        self.LstmFcn = LSTMFCN(18, lstm_layers).double()
+        self.in_conv = BlockFCNConv2D(in_channels=in_channels, out_channels=lstm_in_channels).double()
+        self.LstmFcn = LSTMFCN(time_steps, lstm_layers).double()
 
     def forward(self, x):
-        x1 = torch.squeeze(self.in_conv(x), dim=1)
+        x1 = self.in_conv(x).squeeze(dim=1)
         y = self.LstmFcn(x1)
 
-        return y
+        return y.squeeze(0)
 
 

@@ -7,7 +7,7 @@ from copy import copy
 if __name__ == '__main__':
     subject = Subject.create_subject()
     num_subjects = 5
-    model = AmygNet(num_subjects, 3)
+    model = AmygNet(in_channels=num_subjects, lstm_in_channels=8, lstm_layers=3, time_steps=18)
     loss_func = MSELoss()
     dl = Lrn.DataLoaders(set([copy(subject) for _ in range(num_subjects)]), Lrn.LearnerMetaData(5))
     learner = Lrn.SimpleLearner([dl.train_dl, dl.test_dl], model, loss_func)
