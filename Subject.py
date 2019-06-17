@@ -1,23 +1,33 @@
 import scipy.io as sio
 import numpy as np
 import pickle
-from config import SubjectMetaData
+from config import SubjectMetaData, LearnerMetaData
 import pandas as pd
 import matplotlib.pyplot as plt
 from itertools import chain
+import mat4py
+
+
+class TrialData:
+    def __init__(self, protocol_path):
+        self.protocols = mat4py.loadmat(protocol_path)['Protocols']
+        elements_to_keep = ['subject', 'TestWatchOnset', 'TestWatchDuration', 'TestRegulateOnset', 'TestRegulateDuration']
+        p_per_subject = zip(*(map(lambda a: self.protocols[a], elements_to_keep)))
+
+        self.subjects = [Subject(SubjectMetaData(*args)) for args in p_per_subject]
 
 
 class Subject:
     roi = np.where(sio.loadmat('raw_data/roi.mat')['ans'])
     amyg_vox = list(zip(*roi))
 
-    def __init__(self, meta_data: SubjectMetaData):
+    def __init__(self, meta_data: SubjectMetaData, raw_data_path='raw_data', bold_mat_name='y'):
         def gen_windows(window_type):
             times_list = meta_data.watch_times if window_type == 'watch' else meta_data.regulate_times
             return map(lambda w: Window(*w, window_type, self.bold), enumerate(times_list))
 
         self.meta_data = meta_data
-        self.bold = sio.loadmat(meta_data.bold_mat_path)[meta_data.bold_mat_name]
+        self.bold = sio.loadmat('/'.join([raw_data_path, meta_data.subject_name]) + '_dataMat.mat')[bold_mat_name]
 
         self.paired_windows = list(map(PairedWindows, gen_windows('watch'), gen_windows('regulate')))
         self.min_w = min((pw.min_w for pw in self.paired_windows))
@@ -127,5 +137,4 @@ def load_subject():
 
 
 if __name__ == '__main__':
-    t = create_subject()
-    print('subject created')
+    data = TrialData('raw_data/ProtocolBySub_new.mat')

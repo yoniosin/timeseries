@@ -3,14 +3,24 @@ from typing import List
 
 
 @dataclass
+class LearnerMetaData:
+    bold_mat_location: str
+    train_ratio: float = 0.7
+    train_windows: int = 2
+
+    def __post_init__(self):
+        assert 0 < self.train_ratio < 1
+        assert 0 < self.train_windows < 5
+
+
+@dataclass
 class SubjectMetaData:
-    initial_delay: int
+    subject_name: str
     watch_on: List[int]
     watch_duration: List[int]
     regulate_on: List[int]
     regulate_duration: List[int]
-    bold_mat_path: str
-    bold_mat_name: str = 'y'
+    initial_delay: int = 2
 
     def gen_time_range(self, on, duration): return list(range(on + self.initial_delay, on + duration))
 
