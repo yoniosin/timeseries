@@ -1,61 +1,62 @@
 import scipy.io as sio
 import numpy as np
 import pickle
-from config import SubjectMetaData, LearnerMetaData
-import pandas as pd
-import matplotlib.pyplot as plt
+from config import SubjectMetaData
 from itertools import chain
 import mat4py
+from oct2py import Oct2Py
+from pathlib import Path
 
 
 class TrialData:
     def __init__(self, protocol_path):
-        self.protocols = mat4py.loadmat(protocol_path)['Protocols']
-        elements_to_keep = ['subject', 'TestWatchOnset', 'TestWatchDuration', 'TestRegulateOnset', 'TestRegulateDuration']
-        p_per_subject = zip(*(map(lambda a: self.protocols[a], elements_to_keep)))
+        protocols = mat4py.loadmat(protocol_path)['Protocols']
+        keep_elements = ['subject', 'TestWatchOnset', 'TestWatchDuration', 'TestRegulateOnset', 'TestRegulateDuration']
+        p_per_subject = zip(*(map(lambda a: protocols[a], keep_elements)))
 
         self.subjects = [Subject(SubjectMetaData(*args)) for args in p_per_subject]
+
+    def add_subjects(self, subjects):
+        Subject.update_min(min(map(lambda s: s.min_w, subjects)))
+        self.subjects += subjects
 
 
 class Subject:
     roi = np.where(sio.loadmat('raw_data/roi.mat')['ans'])
     amyg_vox = list(zip(*roi))
+    shared_min_w = np.inf
 
-    def __init__(self, meta_data: SubjectMetaData, raw_data_path='raw_data', bold_mat_name='y'):
+    @classmethod
+    def update_min(cls, candidate): cls.shared_min_w = min(cls.min_w, candidate)
+
+    def __init__(self, meta_data: SubjectMetaData, raw_data_path='raw_data'):
         def gen_windows(window_type):
             times_list = meta_data.watch_times if window_type == 'watch' else meta_data.regulate_times
             return map(lambda w: Window(*w, window_type, self.bold), enumerate(times_list))
 
         self.meta_data = meta_data
-        self.bold = sio.loadmat('/'.join([raw_data_path, meta_data.subject_name]) + '_dataMat.mat')[bold_mat_name]
-
+        self.bold = oc.convert_img(str(Path(raw_data_path) / meta_data.file_name))
         self.paired_windows = list(map(PairedWindows, gen_windows('watch'), gen_windows('regulate')))
-        self.min_w = min((pw.min_w for pw in self.paired_windows))
-        for pw in self.paired_windows:
-            pw.min_w = self.min_w
-        
-        self.avg_mean_diff = pd.DataFrame({pw.idx: pw.avg_diff() for pw in self.paired_windows})
 
     def __repr__(self):
         grades = [pw.score for pw in self.paired_windows]
-        grades_formated = ("{:.2f}, " * len(grades)).format(*grades)
-        return f'Subject windows grades=[{grades_formated}]'
+        grades_formatted = ("{:.2f}, " * len(grades)).format(*grades)
+        return f'Subject windows grades=[{grades_formatted}]'
     
-    def visualize(self):
-        plt.figure()
-        self.avg_mean_diff.plot()
-        plt.show()
-
     def get_data(self, train_num):
         prev_data = list(chain(*[w.get_data() for w in self.get_windows(train_num)]))
 
-        last_data = self.paired_windows[train_num].watch_window.get_data(self.min_w)
+        last_pw = self.paired_windows[train_num]
+        last_data = last_pw.watch_window.get_data()
         X = np.stack(prev_data + [last_data])
-        y = self.paired_windows[train_num].score
+        y = last_pw.score
 
         return X, y
 
     def get_windows(self, windows_num): return self.paired_windows[:windows_num]
+
+    @property
+    def min_w(self): return min(pw.min_w for pw in self.paired_windows)
 
 
 class PairedWindows:
@@ -63,6 +64,7 @@ class PairedWindows:
         def calc_score():
             mean_diff = self.watch_window.mean - self.regulate_window.mean
             joint_var = np.var(np.concatenate((self.watch_window.all_samples, self.regulate_window.all_samples)))
+            map(lambda w: delattr(w, 'all_samples'), (watch_window, regulate_window))
             return mean_diff / joint_var
 
         assert watch_window.idx == regulate_window.idx, f'indices mismatch: {watch_window.idx} != {regulate_window.idx}'
@@ -70,20 +72,15 @@ class PairedWindows:
         self.watch_window: Window = watch_window
         self.regulate_window: Window = regulate_window
         self.score = calc_score()
-        self.df = pd.DataFrame({**self.watch_window.series, **self.regulate_window.series})
-
-        self.min_w = min(self.watch_window.w, self.regulate_window.w)
 
     def __repr__(self):
         return f'Windows #{self.idx}, score = {self.score:.4f}'
 
-    def avg_diff(self):
-        regulate_min = np.mean(self.regulate_window.np_mat[:, :self.min_w], axis=0)
-        watch_min = np.mean(self.watch_window.np_mat[:, :self.min_w], axis=0)
-        return np.asarray(watch_min - regulate_min, dtype=float)
-
     def get_data(self):
-        return [w.get_data(self.min_w) for w in (self.watch_window, self.regulate_window)]
+        return [w.get_data() for w in (self.watch_window, self.regulate_window)]
+
+    @property
+    def min_w(self): return min(window.w for window in (self.watch_window, self.regulate_window))
 
 
 class Window:
@@ -93,9 +90,9 @@ class Window:
         self.window_type = window_type
 
         self.voxels = {vox: Voxel(vox, bold_mat[(*vox), time_slots]) for vox in Subject.amyg_vox}
-        self.series = ({str(vox) + window_type: pd.Series(self.voxels[vox].samples) for vox in self.voxels})
-        self.np_mat = np.asarray([self.series[s].values for s in self.series])
+        self.np_mat = np.asarray([voxel.samples for voxel in self.voxels.values()])
         h, self.w = self.np_mat.shape
+        Subject.update_min(self.w)
         self.all_samples = np.reshape(self.np_mat, h * self.w)
         self.mean = np.mean(self.all_samples)
         self.var = np.var(self.all_samples)
@@ -103,7 +100,7 @@ class Window:
     def __repr__(self):
         return f"{self.window_type} window #{self.idx}, mean={self.mean:.2f}, var={self.var:.2f}"
 
-    def get_data(self, min_w): return self.np_mat[:, :min_w]
+    def get_data(self): return self.np_mat[:, :Subject.shared_min_w]
 
 
 class Voxel:
@@ -117,24 +114,11 @@ class Voxel:
         return f"vox {self.vox_coor}, mean={self.mean:.2f}, var={self.var:.2f}"
 
 
-def create_subject():
-    subject_meta_data = SubjectMetaData(initial_delay=2,
-                                        watch_on=[98, 151, 201, 251, 301],
-                                        watch_duration=[23, 20, 20, 20, 20],
-                                        regulate_on=[121, 171, 221, 271, 321],
-                                        regulate_duration=[20, 20, 20, 20, 20],
-                                        bold_mat_path='raw_data/BOLD_test.mat')
-
-    subject = Subject(subject_meta_data)
-
-    pickle.dump(subject, open('subject.pckl', 'wb'))
-    return subject
-
-
-def load_subject():
-    subject = pickle.load(open('subject.pckl', 'rb'))
-    return subject
+def load_trial_data():
+    return pickle.load(open("raw_data/trial_data.pckl", "rb"))
 
 
 if __name__ == '__main__':
+    oc = Oct2Py()
     data = TrialData('raw_data/ProtocolBySub_new.mat')
+    pickle.dump(data, open('raw_data/trial_data.pckl', 'wb'))

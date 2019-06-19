@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from Subject import Subject
+from PreProcess import Subject
 from dataclasses import dataclass
 import random
 from tqdm import tqdm

@@ -2,6 +2,7 @@ from dataclasses import dataclass
 from typing import List
 
 
+prefix = 'dataMat.mat'
 @dataclass
 class LearnerMetaData:
     bold_mat_location: str
@@ -27,3 +28,4 @@ class SubjectMetaData:
     def __post_init__(self):
         self.watch_times = map(self.gen_time_range, self.watch_on, self.watch_duration)
         self.regulate_times = map(self.gen_time_range, self.regulate_on, self.regulate_duration)
+        self.file_name = '_'.join([self.subject_name, prefix])
