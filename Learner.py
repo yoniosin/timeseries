@@ -1,10 +1,11 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from PreProcess import Subject
-from dataclasses import dataclass
-import random
+from config import LearnerMetaData
 from tqdm import tqdm
-from typing import Set
+from typing import Iterable
+from pathlib import Path
+import random
+import pickle
 
 
 class SimpleLearner:
@@ -30,12 +31,22 @@ class SimpleLearner:
 
 
 class DataLoaders:
-    def __init__(self, subjects: Set[Subject], md: LearnerMetaData):
-        train_windows = set(random.sample(subjects, int(md.train_ratio * md.total_subjects)))
-        test_windows = subjects.difference(train_windows)
+    def __init__(self, subjects: Iterable[Path], md: LearnerMetaData):
+        train_windows = []
+        test_windows = []
 
-        def build_data_loader(subjects_sub: Set[Subject]):
-            data = [s.get_data(md.train_windows) for s in subjects_sub]
+        def add_window_to_list(path):
+            l = train_windows if random.random() < md.train_ratio else test_windows
+            l.append(path)
+
+        [add_window_to_list(s) for s in subjects]
+
+        def build_data_loader(path_list: Iterable[Path]):
+            def get_sub_data(path: Path):
+                subject = pickle.load(open(str(path), 'rb'))
+                return subject.get_data(train_num=md.train_windows, width=md.min_w)
+
+            data = [get_sub_data(p) for p in path_list]
             X, y = list(zip(*data))
 
             X = torch.tensor(X).double()
@@ -43,5 +54,7 @@ class DataLoaders:
 
             return DataLoader(TensorDataset(X, y), shuffle=False)
 
+        self.train_len = len(train_windows)
+        self.test_len = len(test_windows)
         self.train_dl = build_data_loader(train_windows)
         self.test_dl = build_data_loader(test_windows)

@@ -1,16 +1,20 @@
 from dataclasses import dataclass
 from typing import List
+import json
 
 
 @dataclass
 class LearnerMetaData:
-    bold_mat_location: str
     train_ratio: float = 0.7
     train_windows: int = 2
 
     def __post_init__(self):
         assert 0 < self.train_ratio < 1
         assert 0 < self.train_windows < 5
+        meta_dict = json.load(open('PreProcess/meta.txt', 'r'))
+        self.total_subject = meta_dict['subjects_num']
+        self.min_w = meta_dict['min_w']
+        self.in_channels = self.train_windows * 2 + 1
 
 
 @dataclass
