@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+from config import LearnerMetaData
 
 
 class BlockLSTM(nn.Module):
@@ -37,12 +38,12 @@ class BlockFCNConv(nn.Module):
 
 
 class BlockFCNConv2D(nn.Module):
-    def __init__(self, in_channels, out_channels, kernel_size=1, momentum=0.99, epsilon=0.001):
+    def __init__(self, in_channels, out_channels, voxels_num, kernel_size=1, momentum=0.99, epsilon=0.001):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels=in_channels, out_channels=out_channels, kernel_size=kernel_size)
-        self.batch_norm = nn.BatchNorm1d(num_features=8, eps=epsilon, momentum=momentum)
+        self.batch_norm = nn.BatchNorm1d(num_features=out_channels, eps=epsilon, momentum=momentum)
         self.relu = nn.ReLU()
-        self.conv2 = nn.Conv1d(in_channels=248, out_channels=1, kernel_size=kernel_size)
+        self.conv2 = nn.Conv1d(in_channels=voxels_num, out_channels=1, kernel_size=kernel_size)
 
     def forward(self, x):
         x = self.conv1(x).squeeze()
@@ -72,13 +73,13 @@ class BlockFCN(nn.Module):
 
 
 class LSTMFCN(nn.Module):
-    def __init__(self, time_steps, num_variables):
+    def __init__(self, time_steps, num_variables, linear2_in):
         super().__init__()
         self.lstm_block = BlockLSTM(time_steps, num_variables, lstm_hs=128)
         self.fcn_block = BlockFCN(time_steps)
         self.linear1 = nn.Linear(in_features=256, out_features=1)
         self.relu = nn.ReLU()
-        self.linear2 = nn.Linear(in_features=8, out_features=1)
+        self.linear2 = nn.Linear(in_features=linear2_in, out_features=1)
 
     def forward(self, x):
         # input is (batch_size, time_steps), it has to be (batch_size, 1, time_steps)
@@ -99,10 +100,12 @@ class LSTMFCN(nn.Module):
 
 
 class AmygNet(nn.Module):
-    def __init__(self, in_channels, lstm_in_channels, lstm_layers, time_steps):
+    def __init__(self, md: LearnerMetaData):
         super().__init__()
-        self.in_conv = BlockFCNConv2D(in_channels=in_channels, out_channels=lstm_in_channels).double()
-        self.LstmFcn = LSTMFCN(time_steps, lstm_layers).double()
+        self.in_conv = BlockFCNConv2D(in_channels=md.in_channels,
+                                      out_channels=md.lstm_hidden_size,
+                                      voxels_num=md.voxels_num).double()
+        self.LstmFcn = LSTMFCN(md.min_w, md.lstm_layers, md.lstm_hidden_size).double()
 
     def forward(self, x):
         x1 = self.in_conv(x).squeeze(dim=1)

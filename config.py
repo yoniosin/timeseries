@@ -7,6 +7,8 @@ import json
 class LearnerMetaData:
     train_ratio: float = 0.7
     train_windows: int = 2
+    lstm_hidden_size: int = 20
+    lstm_layers: int = 3
 
     def __post_init__(self):
         assert 0 < self.train_ratio < 1
@@ -14,6 +16,7 @@ class LearnerMetaData:
         meta_dict = json.load(open('PreProcess/meta.txt', 'r'))
         self.total_subject = meta_dict['subjects_num']
         self.min_w = meta_dict['min_w']
+        self.voxels_num = meta_dict['voxels_num']
         self.in_channels = self.train_windows * 2 + 1
 
 
