@@ -5,9 +5,9 @@ import json
 
 @dataclass
 class LearnerMetaData:
-    train_ratio: float = 0.7
+    train_ratio: float = 0.8
     train_windows: int = 2
-    lstm_hidden_size: int = 20
+    lstm_hidden_size: int = 2
     lstm_layers: int = 3
 
     def __post_init__(self):

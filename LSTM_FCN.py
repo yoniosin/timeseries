@@ -105,12 +105,16 @@ class AmygNet(nn.Module):
         self.in_conv = BlockFCNConv2D(in_channels=md.in_channels,
                                       out_channels=md.lstm_hidden_size,
                                       voxels_num=md.voxels_num).double()
-        self.LstmFcn = LSTMFCN(md.min_w, md.lstm_layers, md.lstm_hidden_size).double()
+        self.dropout = nn.Dropout(p=0.25)
+        self.out_conv = BlockFCNConv(in_channel=md.lstm_hidden_size, out_channel=1, kernel_size=4).double()
+        self.relu2 = nn.ReLU()
+        self.linear = nn.Linear(in_features=11, out_features=1).double()
 
     def forward(self, x):
-        x1 = self.in_conv(x).squeeze(dim=1)
-        y = self.LstmFcn(x1)
+        x1 = self.in_conv(x)
+        x1 = self.dropout(torch.transpose(x1, 1, 0))
+        x2 = self.out_conv(x1)
+        x2 = self.relu2(x2.squeeze())
+        y = self.linear(x2)
 
-        return y.squeeze(0)
-
-
+        return y

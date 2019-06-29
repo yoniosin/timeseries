@@ -7,6 +7,7 @@ from pathlib import Path
 import random
 import pickle
 import numpy as np
+from sklearn.metrics import confusion_matrix
 
 
 class SimpleLearner:
@@ -26,6 +27,7 @@ class SimpleLearner:
         return loss.item()
 
     def fit(self, epochs=1, lr=1e-3):
+        self.model.train()
         train_losses = []
         test_loss = []
         for i in tqdm(range(epochs)):
@@ -34,13 +36,27 @@ class SimpleLearner:
                 current_loss = self.update(x, y, lr)
                 losses.append(current_loss)
             train_losses.append(np.average(losses))
-            test_loss.append(self.eval())
+            test_loss.append(self.evaluate())
 
         torch.save(self.model.state_dict(), 'train.pt')
         return train_losses, test_loss
 
-    def eval(self):
-        return np.average([self.loss_func(self.model(x), y).item() for x, y in self.test_data])
+    def evaluate(self):
+        self.model.eval()
+        res = np.average([self.loss_func(self.model(x), y).item() for x, y in self.test_data])
+        self.model.train()
+        return res
+
+    def classification_eval(self):
+        y = []
+        y_pred = []
+        self.model.eval()
+        for x, y_real in self.test_data:
+            y.append(int(y_real > 0))
+            y_pred.append(int(self.model(x) > 0))
+
+        print(confusion_matrix(y, y_pred))
+        self.model.train()
 
 
 class DataLoaders:

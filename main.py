@@ -10,6 +10,7 @@ import json
 import os
 
 
+
 def get_experiment_path():
     def get_num(file_name):
         return int(re.search(r'(\d*)$', str(file_name)).group(1))
@@ -50,6 +51,13 @@ class Experiment:
         if plot:
             plt.show()
 
+    def classification_eval(self): self.learner.classification_eval()
+
+
+def loss_func(target, output):
+    mse = (target - output) ** 2
+    return mse
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -57,7 +65,6 @@ if __name__ == '__main__':
     parser.add_argument('-ratio', '-r', default=0.7)
     args = parser.parse_args()
 
-    loss_func = MSELoss()
     exp_dir = Path('Experiments')
     experiment = Experiment(args.windows, args.ratio, get_experiment_path())
-    experiment.run(epochs=200, lr=1e-3)
+    experiment.run(epochs=100, lr=1e-3)
