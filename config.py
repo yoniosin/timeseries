@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import List
 import json
 
@@ -18,6 +18,8 @@ class LearnerMetaData:
         self.min_w = meta_dict['min_w']
         self.voxels_num = meta_dict['voxels_num']
         self.in_channels = self.train_windows * 2 + 1
+
+    def to_json(self): return asdict(self)
 
 
 @dataclass

@@ -6,11 +6,15 @@ from typing import Iterable
 from pathlib import Path
 import random
 import pickle
+import numpy as np
 
 
 class SimpleLearner:
-    def __init__(self, data, model, loss_func):
-        self.data, self.model, self.loss_func = data, model, loss_func
+    def __init__(self, train_data, test_data, model, loss_func):
+        self.train_data = train_data
+        self.test_data = test_data
+        self.model = model
+        self.loss_func = loss_func
 
     def update(self, x, y, lr):
         opt = torch.optim.Adam(self.model.parameters(), lr)
@@ -22,21 +26,30 @@ class SimpleLearner:
         return loss.item()
 
     def fit(self, epochs=1, lr=1e-3):
-        losses = []
-        for _ in tqdm(range(epochs)):
-            for x, y in self.data[0]:
+        train_losses = []
+        test_loss = []
+        for i in tqdm(range(epochs)):
+            losses = []
+            for x, y in self.train_data:
                 current_loss = self.update(x, y, lr)
                 losses.append(current_loss)
-        return losses
+            train_losses.append(np.average(losses))
+            test_loss.append(self.eval())
+
+        torch.save(self.model.state_dict(), 'train.pt')
+        return train_losses, test_loss
+
+    def eval(self):
+        return np.average([self.loss_func(self.model(x), y).item() for x, y in self.test_data])
 
 
 class DataLoaders:
     def __init__(self, subjects: Iterable[Path], md: LearnerMetaData):
-        train_windows = []
-        test_windows = []
+        self.train_subjects = []
+        self.test_subjects = []
 
         def add_window_to_list(path):
-            l = train_windows if random.random() < md.train_ratio else test_windows
+            l = self.train_subjects if random.random() < md.train_ratio else self.test_subjects
             l.append(path)
 
         [add_window_to_list(s) for s in subjects]
@@ -54,7 +67,7 @@ class DataLoaders:
 
             return DataLoader(TensorDataset(X, y), shuffle=False)
 
-        self.train_len = len(train_windows)
-        self.test_len = len(test_windows)
-        self.train_dl = build_data_loader(train_windows)
-        self.test_dl = build_data_loader(test_windows)
+        self.train_len = len(self.train_subjects)
+        self.test_len = len(self.test_subjects)
+        self.train_dl = build_data_loader(self.train_subjects)
+        self.test_dl = build_data_loader(self.test_subjects)

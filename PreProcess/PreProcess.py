@@ -61,9 +61,9 @@ class TrialData:
                 print(f'failed creating {link}')
                 open('failed.txt', 'a').write(link)
 
-        with open('meta.txt', 'w') as jf:
-            json.dump(jf, {'subjects_num': subjects_created,
-                           'min_w': TrialData.shared_min_w})
+        with open('meta.txt', 'wb') as jf:
+            json.dump({'subjects_num': subjects_created,
+                       'min_w': TrialData.shared_min_w}, jf)
 
 
 class Subject:
@@ -96,6 +96,9 @@ class Subject:
 
     def get_windows(self, windows_num): return self.paired_windows[:windows_num]
 
+    @property
+    def min_w(self): return min(map(lambda wind: wind.min_w, self.paired_windows))
+
 
 class PairedWindows:
     def __init__(self, watch_window, regulate_window):
@@ -116,6 +119,9 @@ class PairedWindows:
 
     def get_data(self, width):
         return [w.get_data(width) for w in (self.watch_window, self.regulate_window)]
+
+    @property
+    def min_w(self): return min(self.watch_window.w, self.regulate_window.w)
 
 
 class Window:
@@ -155,4 +161,4 @@ def load_trial_data():
 
 if __name__ == '__main__':
     data = TrialData('../raw_data/protocols.mat')
-    pickle.dump(data, open('raw_data/trial_data.pckl', 'wb'))
+    # pickle.dump(data, open('raw_data/trial_data.pckl', 'wb'))
