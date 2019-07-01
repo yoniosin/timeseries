@@ -5,10 +5,10 @@ import json
 
 @dataclass
 class LearnerMetaData:
+    latent_vector_size: int
+    loss_lambda: float
     train_ratio: float = 0.8
     train_windows: int = 2
-    lstm_hidden_size: int = 2
-    lstm_layers: int = 3
 
     def __post_init__(self):
         assert 0 < self.train_ratio < 1

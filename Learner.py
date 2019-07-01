@@ -10,21 +10,30 @@ import numpy as np
 from sklearn.metrics import confusion_matrix
 
 
+def reshape_input(x): return torch.transpose(x.squeeze(), 0, 2)
+
+
 class SimpleLearner:
-    def __init__(self, train_data, test_data, model, loss_func):
+    def __init__(self, train_data, test_data, model, loss_func, loss_lambda):
         self.train_data = train_data
         self.test_data = test_data
         self.model = model
         self.loss_func = loss_func
+        self.loss_lambda = loss_lambda
 
     def update(self, x, y, lr):
         opt = torch.optim.Adam(self.model.parameters(), lr)
-        y_hat = self.model(x)
-        loss = self.loss_func(y_hat, y)
+        loss = self.calc_loss(x, y)
         loss.backward()
         opt.step()
         opt.zero_grad()
         return loss.item()
+
+    def calc_loss(self, x, y):
+        x_rec, y_hat = self.model(x)
+        reconstruction_loss = self.loss_func(x, x_rec)
+        regression_loss = self.loss_func(y, y_hat)
+        return regression_loss + self.loss_lambda * reconstruction_loss
 
     def fit(self, epochs=1, lr=1e-3):
         self.model.train()
@@ -33,6 +42,7 @@ class SimpleLearner:
         for i in tqdm(range(epochs)):
             losses = []
             for x, y in self.train_data:
+                x = torch.transpose(x.squeeze(), 0, 2)
                 current_loss = self.update(x, y, lr)
                 losses.append(current_loss)
             train_losses.append(np.average(losses))
@@ -43,17 +53,22 @@ class SimpleLearner:
 
     def evaluate(self):
         self.model.eval()
-        res = np.average([self.loss_func(self.model(x), y).item() for x, y in self.test_data])
+        res = []
+        for x, y in self.test_data:
+            x = reshape_input(x)
+            res.append(self.calc_loss(x, y).item())
         self.model.train()
-        return res
+        return np.average(res)
 
     def classification_eval(self):
         y = []
         y_pred = []
         self.model.eval()
         for x, y_real in self.test_data:
+            x = torch.transpose(x.squeeze(), 0, 2)
+            _, y_pred_tmp = self.model(x)
             y.append(int(y_real > 0))
-            y_pred.append(int(self.model(x) > 0))
+            y_pred.append(int(y_pred_tmp > 0))
 
         print(confusion_matrix(y, y_pred))
         self.model.train()
