@@ -64,7 +64,7 @@ class Experiment:
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-windows', '-w', default=1)
+    parser.add_argument('-windows', '-w', default=2)
     parser.add_argument('-ratio', '-r', default=0.7)
     args = parser.parse_args()
 

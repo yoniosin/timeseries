@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
-from config import LearnerMetaData
+from util.config import LearnerMetaData
 from tqdm import tqdm
 from typing import Iterable
 from pathlib import Path
@@ -76,14 +76,14 @@ class SimpleLearner:
 
 class DataLoaders:
     def __init__(self, subjects: Iterable[Path], md: LearnerMetaData):
-        self.train_subjects = []
-        self.test_subjects = []
+        def split_subjects():
+            def add_window_to_list(path):
+                l = self.train_subjects if random.random() < md.train_ratio else self.test_subjects
+                l.append(path)
 
-        def add_window_to_list(path):
-            l = self.train_subjects if random.random() < md.train_ratio else self.test_subjects
-            l.append(path)
-
-        [add_window_to_list(s) for s in subjects]
+            [add_window_to_list(s) for s in subjects]
+            self.train_len = len(self.train_subjects)
+            self.test_len = len(self.test_subjects)
 
         def build_data_loader(path_list: Iterable[Path]):
             def get_sub_data(path: Path):
@@ -93,12 +93,15 @@ class DataLoaders:
             data = [get_sub_data(p) for p in path_list]
             X, y = list(zip(*data))
 
-            X = torch.tensor(X).double()
-            y = torch.tensor(y).double()
+            self.X = torch.tensor(X).double()
+            self.y = torch.tensor(y).double()
+
+            torch.save(self.X, open('passive.npy', 'wb'))
 
             return DataLoader(TensorDataset(X, y), shuffle=False)
 
-        self.train_len = len(self.train_subjects)
-        self.test_len = len(self.test_subjects)
+        self.train_subjects = []
+        self.test_subjects = []
+        split_subjects()
         self.train_dl = build_data_loader(self.train_subjects)
         self.test_dl = build_data_loader(self.test_subjects)

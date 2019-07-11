@@ -1,6 +1,5 @@
-import torch
 import torch.nn as nn
-from config import LearnerMetaData
+from util.config import LearnerMetaData
 
 
 class Encoder(nn.Module):
