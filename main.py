@@ -1,8 +1,8 @@
 from torch.nn.modules.loss import MSELoss
-from LSTM_FCN import AmygNet
+from LSTM_FCN import AutoEncoder
 import Learner as Lrn
 from pathlib import Path
-from PreProcess.PreProcess import Subject, PairedWindows, Window, Voxel  # requied for unpickling
+from util.Subject import Subject, PairedWindows, Window3D  # requied for unpickling
 import argparse
 from matplotlib import pyplot as plt
 import re
@@ -28,15 +28,24 @@ class Experiment:
         self.train_losses, self.test_losses = None, None
         self.exp_path = exp_path
 
-        self.md = Lrn.LearnerMetaData(train_windows=train_window, train_ratio=train_ratio)
-        self.dl = Lrn.DataLoaders(Path('Data').iterdir(), self.md)
-        self.model = AmygNet(self.md)
-        self.learner = Lrn.SimpleLearner(self.dl.train_dl, self.dl.test_dl, self.model, loss_func)
+        self.md = Lrn.LearnerMetaData(train_windows=train_window,
+                                      train_ratio=train_ratio,
+                                      loss_lambda=1,
+                                      latent_vector_size=10)
+        self.dl = Lrn.DataLoaders(Path('Data/3D').iterdir(), self.md)
+        self.model = AutoEncoder(self.md)
+        self.learner = Lrn.SimpleLearner(self.dl.train_dl,
+                                         self.dl.test_dl,
+                                         self.model,
+                                         loss_func=MSELoss(),
+                                         loss_lambda=self.md.loss_lambda)
 
         with open(str(self.exp_path / 'exp_meta.txt'), 'w') as jf:
             json.dump({**{'train_subjects': [str(s) for s in self.dl.train_subjects],
                           'test_subjects': [str(s) for s in self.dl.test_subjects]},
                        **self.md.to_json()}, jf)
+
+        self.regressor = None
 
     def run(self, epochs, lr, plot=True):
         self.train_losses, self.test_losses = self.learner.fit(epochs=epochs, lr=lr)
@@ -50,14 +59,16 @@ class Experiment:
         if plot:
             plt.show()
 
+    def classification_eval(self): self.learner.classification_eval()
+
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('-windows', '-w', default=1)
+    parser.add_argument('-windows', '-w', default=2)
     parser.add_argument('-ratio', '-r', default=0.7)
     args = parser.parse_args()
 
-    loss_func = MSELoss()
     exp_dir = Path('Experiments')
     experiment = Experiment(args.windows, args.ratio, get_experiment_path())
-    experiment.run(epochs=200, lr=1e-3)
+    experiment.run(epochs=100, lr=1e-3)
+    experiment.classification_eval()
