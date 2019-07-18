@@ -24,11 +24,11 @@ class Subject:
         if scalar_result:
             last_data = last_pw.get_data(width)
             X = np.hstack(prev_data + last_data)
+            y = last_pw.score
         else:
             last_data = last_pw.watch_window.get_data(width)
-            X = np.stack(prev_data + [last_data])
-
-        y = last_pw.score
+            X = torch.cat(prev_data + [last_data], dim=3)
+            y = last_pw.regulate_window.get_data(width)
 
         return X, y
 
@@ -108,7 +108,7 @@ class Window3D(Window):
         x = x[:, :, Subject.voxels_md.d_range, :]
         return torch.tensor(x[:, :, :, self.time])
 
-    def get_data(self, width): return self.bold
+    def get_data(self, width): return self.bold[:, :, :, :width]
 
 
 def subject_generator(subject_id, protocol, bold_mat, data_type='3d'):

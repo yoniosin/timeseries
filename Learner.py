@@ -7,7 +7,6 @@ from pathlib import Path
 import random
 import pickle
 import numpy as np
-from sklearn.metrics import confusion_matrix
 
 
 def reshape_input(x): return torch.transpose(x.squeeze(), 0, 2)
@@ -85,23 +84,32 @@ class DataLoaders:
             self.train_len = len(self.train_subjects)
             self.test_len = len(self.test_subjects)
 
-        def build_data_loader(path_list: Iterable[Path]):
+        def build_data_loader(path_list: Iterable[Path], fold):
             def get_sub_data(path: Path):
                 subject = pickle.load(open(str(path), 'rb'))
-                return subject.get_data(train_num=md.train_windows, width=md.min_w)
+                return subject.get_data(train_num=md.train_windows, width=md.min_w, scalar_result=False)
 
             data = [get_sub_data(p) for p in path_list]
             X, y = list(zip(*data))
 
-            self.X = torch.tensor(X).double()
-            self.y = torch.tensor(y).double()
+            self.X = torch.stack(X).double()
+            self.y = torch.stack(y).double()
 
-            torch.save(self.X, open('passive.npy', 'wb'))
+            data_set = torch.stack([torch.cat(subject, dim=3) for subject in data]).double()
+            torch.save(data_set, open('_'.join(('3d', fold, 'dataset.pt')), 'wb'))
 
-            return DataLoader(TensorDataset(X, y), shuffle=False)
+            return DataLoader(TensorDataset(self.X, self.y), shuffle=False)
 
         self.train_subjects = []
         self.test_subjects = []
         split_subjects()
-        self.train_dl = build_data_loader(self.train_subjects)
-        self.test_dl = build_data_loader(self.test_subjects)
+        self.train_dl = build_data_loader(self.train_subjects, 'train')
+        self.test_dl = build_data_loader(self.test_subjects, 'test')
+
+
+if __name__ == '__main__':
+    md = LearnerMetaData(train_windows=2,
+                         train_ratio=0.7,
+                         loss_lambda=1,
+                         latent_vector_size=10)
+    dl = DataLoaders(Path('Data/3D').iterdir(), md)

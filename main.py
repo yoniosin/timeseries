@@ -2,7 +2,7 @@ from torch.nn.modules.loss import MSELoss
 from LSTM_FCN import AutoEncoder
 import Learner as Lrn
 from pathlib import Path
-from PreProcess.PreProcess import Subject, PairedWindows, Window, Voxel  # requied for unpickling
+from util.Subject import Subject, PairedWindows, Window3D  # requied for unpickling
 import argparse
 from matplotlib import pyplot as plt
 import re
@@ -32,7 +32,7 @@ class Experiment:
                                       train_ratio=train_ratio,
                                       loss_lambda=1,
                                       latent_vector_size=10)
-        self.dl = Lrn.DataLoaders(Path('Data').iterdir(), self.md)
+        self.dl = Lrn.DataLoaders(Path('Data/3D').iterdir(), self.md)
         self.model = AutoEncoder(self.md)
         self.learner = Lrn.SimpleLearner(self.dl.train_dl,
                                          self.dl.test_dl,
